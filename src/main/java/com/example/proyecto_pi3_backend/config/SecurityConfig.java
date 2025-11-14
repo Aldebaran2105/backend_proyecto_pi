@@ -20,7 +20,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/api/**").permitAll() // Temporal: permitir todos los endpoints de la API
+                        .requestMatchers("/users/**").permitAll()
+                        .requestMatchers("/menu-items/**").permitAll()
+                        .requestMatchers("/orders/**").permitAll()
+                        .requestMatchers("/feedback/**").permitAll()
+                        .requestMatchers("/vendors/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Deshabilitado temporalmente para pruebas

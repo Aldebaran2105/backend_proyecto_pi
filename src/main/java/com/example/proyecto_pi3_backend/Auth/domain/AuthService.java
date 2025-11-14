@@ -27,28 +27,44 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        // Validar que el email no esté vacío
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("El email es requerido");
+        }
+        
+        // Validar que el email no esté ya registrado
         if (userRepository.findAll().stream()
-                .anyMatch(user -> user.getEmail().equals(request.getEmail()))) {
+                .anyMatch(user -> user.getEmail() != null && user.getEmail().equals(request.getEmail()))) {
             throw new RuntimeException("El email ya está registrado");
         }
 
-        Users user = new Users();
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-
-        if (request.getRole() != null) {
-            try {
-                user.setRole(Role.valueOf(request.getRole().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                user.setRole(Role.USER);
-            }
-        } else {
-            user.setRole(Role.USER);
+        // Validar campos requeridos
+        if (request.getFirstName() == null || request.getFirstName().trim().isEmpty()) {
+            throw new RuntimeException("El nombre es requerido");
+        }
+        
+        if (request.getLastName() == null || request.getLastName().trim().isEmpty()) {
+            throw new RuntimeException("El apellido es requerido");
+        }
+        
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new RuntimeException("La contraseña es requerida");
         }
 
-        user = userRepository.save(user);
+        Users user = new Users();
+        user.setFirstName(request.getFirstName().trim());
+        user.setLastName(request.getLastName().trim());
+        user.setEmail(request.getEmail().trim().toLowerCase());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        
+        // Siempre asignar rol USER por defecto al registrarse
+        user.setRole(Role.USER);
+
+        try {
+            user = userRepository.save(user);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al guardar el usuario: " + e.getMessage());
+        }
 
         String token = jwtService.generateToken(user);
 
@@ -57,7 +73,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRole().name(),
+                user.getRole() != null ? user.getRole().name() : "USER",
                 token
         );
     }

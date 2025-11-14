@@ -27,10 +27,12 @@ public class JwtService {
         Date expiration = new Date(now.getTime() + 1000 *60 *60 *10);
         Algorithm algorithm = Algorithm.HMAC256(secret);
 
+        String roleName = user.getRole() != null ? user.getRole().name() : "USER";
+
         return JWT.create()
                 .withSubject(user.getId().toString())
                 .withClaim("email", user.getEmail())
-                .withClaim("role", user.getRole().name())
+                .withClaim("role", roleName)
                 .withIssuedAt(now)
                 .withExpiresAt(expiration)
                 .sign(algorithm);
