@@ -13,5 +13,6 @@ public class UserResponseDTO {
     private String lastName;
     private String email;
     private String role;
+    private Long vendorId; // ID del vendor si el usuario es VENDOR
 }
 

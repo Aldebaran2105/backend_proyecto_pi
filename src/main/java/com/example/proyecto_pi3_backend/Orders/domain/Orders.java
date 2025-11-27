@@ -4,6 +4,7 @@ import com.example.proyecto_pi3_backend.Feedback.domain.Feedback;
 import com.example.proyecto_pi3_backend.OrderDetails.domain.OrderDetails;
 import com.example.proyecto_pi3_backend.User.domain.Users;
 import com.example.proyecto_pi3_backend.Vendors.domain.Vendors;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,18 +22,29 @@ import java.util.List;
 @Entity
 public class Orders {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Timestamp pickup_time;
 
+    private Timestamp createdAt; // Fecha y hora de creación del pedido (para calcular tiempo de pago)
+
     private String status;
+
+    private String pickupCode; // Código único para recoger el pedido
+    
+    private String paymentMethod; // Método de pago: YAPE o PLIN
+    
+    private String mercadoPagoPaymentId; // ID del pago en Mercado Pago
+    private String mercadoPagoPreferenceId; // ID de la preferencia de pago en Mercado Pago
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private Users user;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Feedback> feedback = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)

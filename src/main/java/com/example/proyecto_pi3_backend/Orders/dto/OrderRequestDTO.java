@@ -12,6 +12,7 @@ import java.util.List;
 public class OrderRequestDTO {
     private Long userId;
     private Long vendorId;
+    private String paymentMethod; // YAPE o PLIN
     private List<OrderItemDTO> items;
     
     @Data

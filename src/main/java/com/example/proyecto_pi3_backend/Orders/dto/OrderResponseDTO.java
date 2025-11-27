@@ -18,6 +18,10 @@ public class OrderResponseDTO {
     private String userName;
     private Long vendorId;
     private String vendorName;
+    private String pickupCode; // Código para recoger el pedido
+    private String paymentMethod; // Método de pago: YAPE o PLIN
+    private String mercadoPagoPaymentId; // ID del pago en Mercado Pago
+    private String mercadoPagoPreferenceId; // ID de la preferencia de pago
     private List<OrderDetailResponseDTO> items;
     
     @Data
@@ -28,6 +32,7 @@ public class OrderResponseDTO {
         private String itemName;
         private Integer quantity;
         private String price;
+        private Long menuItemId; // ID del item del menú para feedback
     }
 }
 

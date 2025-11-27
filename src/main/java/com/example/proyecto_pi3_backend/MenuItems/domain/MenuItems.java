@@ -20,7 +20,7 @@ import java.util.List;
 @Entity
 public class MenuItems {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String itemName;
@@ -29,7 +29,7 @@ public class MenuItems {
 
     private String price;
 
-    @OneToMany(mappedBy = "menuItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "menuItem", cascade = {}, orphanRemoval = false)
     private List<Feedback> feedback = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -7,8 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class VendorResponseDTO {
-    private Long id;
+public class VendorRequestDTO {
     private String name;
     private String ubication;
     private String openingTime; // Hora de apertura (formato HH:mm, ej: "08:00")

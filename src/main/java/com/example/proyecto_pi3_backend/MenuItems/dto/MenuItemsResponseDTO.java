@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -16,4 +18,5 @@ public class MenuItemsResponseDTO {
     private String vendorName;
     private Boolean isAvailable;
     private Integer stock;
+    private Date date; // Fecha de disponibilidad del menú
 }

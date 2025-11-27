@@ -22,7 +22,11 @@ public class FeedBackController {
 
     @GetMapping
     public ResponseEntity<List<FeedbackResponseDTO>> getAllFeedbacks() {
-        return ResponseEntity.ok(feedbackService.getAllFeedbacks());
+        try {
+            return ResponseEntity.ok(feedbackService.getAllFeedbacks());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
     }
 
     @GetMapping("/item/{menuItemId}")
@@ -33,5 +37,20 @@ public class FeedBackController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<FeedbackResponseDTO>> getFeedbackByUser(@PathVariable Long userId) {
         return ResponseEntity.ok(feedbackService.getFeedbackByUser(userId));
+    }
+
+    @GetMapping("/vendor/{vendorId}")
+    public ResponseEntity<List<FeedbackResponseDTO>> getFeedbacksByVendor(@PathVariable Long vendorId) {
+        try {
+            return ResponseEntity.ok(feedbackService.getFeedbacksByVendor(vendorId));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFeedback(@PathVariable Long id) {
+        feedbackService.deleteFeedback(id);
+        return ResponseEntity.noContent().build();
     }
 }
