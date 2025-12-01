@@ -13,7 +13,8 @@ import java.util.List;
 public class OrderResponseDTO {
     private Long id;
     private String status;
-    private Timestamp pickup_time;
+    // Epoch milliseconds for pickup time
+    private Long pickup_time;
     private Long userId;
     private String userName;
     private Long vendorId;

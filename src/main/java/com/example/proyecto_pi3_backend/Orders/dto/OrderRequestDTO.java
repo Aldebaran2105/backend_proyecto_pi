@@ -13,6 +13,7 @@ public class OrderRequestDTO {
     private Long userId;
     private Long vendorId;
     private String paymentMethod; // YAPE o PLIN
+    private String date; // Fecha opcional de reserva en formato yyyy-MM-dd
     private List<OrderItemDTO> items;
     
     @Data

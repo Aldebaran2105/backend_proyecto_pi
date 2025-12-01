@@ -100,36 +100,61 @@ public class OrdersService {
     @Transactional
     public OrderResponseDTO createOrder(OrderRequestDTO orderRequestDTO) {
         validateOrderRequest(orderRequestDTO);
-        
+
+        log.info("Crear orden request date='{}' userId={} vendorId={} items={} ", orderRequestDTO.getDate(), orderRequestDTO.getUserId(), orderRequestDTO.getVendorId(), orderRequestDTO.getItems());
+
         Users user = userRepository.findById(orderRequestDTO.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + orderRequestDTO.getUserId()));
-        
+
         Vendors vendor = vendorsRepository.findById(orderRequestDTO.getVendorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor no encontrado con ID: " + orderRequestDTO.getVendorId()));
-        
+
         // Crear orden
         Orders order = new Orders();
         order.setUser(user);
         order.setVendor(vendor);
         order.setStatus("PENDIENTE_PAGO");
-        
+
         // Establecer fecha de creación
         Timestamp now = new Timestamp(System.currentTimeMillis());
         order.setCreatedAt(now);
-        
-        // Calcular pickup_time usando el horario del vendor
-        // Usar el horario de cierre del vendor como horario de recojo para el día del menú
-        Timestamp pickupTime = calculatePickupTime(vendor, now);
+
+        // Si el request incluye una fecha específica, usarla para calcular pickup_time (fecha de recojo)
+        Timestamp pickupTime;
+        if (orderRequestDTO.getDate() != null && !orderRequestDTO.getDate().trim().isEmpty()) {
+            try {
+                // Esperamos formato yyyy-MM-dd (si viene con time, tomar solo la parte fecha)
+                String dateStr = orderRequestDTO.getDate().trim();
+                if (dateStr.contains("T")) {
+                    dateStr = dateStr.split("T")[0];
+                }
+                java.time.LocalDate parsed = java.time.LocalDate.parse(dateStr);
+                // Construir Timestamp a partir de LocalDateTime para evitar conversiones explícitas de zona
+                java.time.LocalDateTime dt = parsed.atStartOfDay();
+                Timestamp requestedDateTimestamp = Timestamp.valueOf(dt);
+
+                // Calcular pickup time para la fecha solicitada usando horario del vendor
+                pickupTime = calculatePickupTime(vendor, requestedDateTimestamp);
+                log.info("Pickup time calculado para fecha solicitada: {} (epoch={})", pickupTime, pickupTime != null ? pickupTime.getTime() : null);
+            } catch (Exception e) {
+                // Si hay error al parsear, caer al comportamiento por defecto (hoy)
+                pickupTime = calculatePickupTime(vendor, now);
+            }
+        } else {
+            // Comportamiento por defecto: hoy
+            pickupTime = calculatePickupTime(vendor, now);
+        }
+
         order.setPickup_time(pickupTime);
-        
+
         order.setPickupCode(generatePickupCode());
         order.setPaymentMethod(orderRequestDTO.getPaymentMethod() != null ? orderRequestDTO.getPaymentMethod().toUpperCase() : "YAPE");
-        
+
         order = ordersRepository.save(order);
-        
+
         // Crear detalles de pedido
         List<OrderDetails> orderDetailsList = createOrderDetails(order, orderRequestDTO.getItems());
-        
+
         return mapToDTO(order, orderDetailsList);
     }
 
@@ -256,11 +281,13 @@ public class OrdersService {
      */
     @Transactional
     public OrderResponseDTO cancelOrder(Long orderId, Long userId) {
+        log.info("Solicitud de cancelación: orderId={}, userId={}", orderId, userId);
         Orders order = ordersRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Orden no encontrada con ID: " + orderId));
         
         // Validar que el pedido pertenece al usuario
         if (!order.getUser().getId().equals(userId)) {
+            log.warn("Intento de cancelar pedido no autorizado: orderId={}, userId={}, ownerId={}", orderId, userId, order.getUser().getId());
             throw new RuntimeException("No tienes permiso para cancelar este pedido");
         }
         
@@ -330,8 +357,10 @@ public class OrdersService {
         
         // Obtener la fecha del pedido (normalizada a solo día, sin hora)
         Date orderDate = normalizeDate(new Date(order.getPickup_time().getTime()));
+        log.info("Crear detalles para orderId={} pickup_time={} normalizedOrderDate={}", order.getId(), order.getPickup_time(), orderDate);
         
         for (OrderRequestDTO.OrderItemDTO itemDTO : items) {
+            log.info("Procesando item menuItemId={} quantity={} para orderId={} fechaPedido={}", itemDTO.getMenuItemId(), itemDTO.getQuantity(), order.getId(), orderDate);
             MenuItems menuItem = menuItemsRepository.findById(itemDTO.getMenuItemId())
                     .orElseThrow(() -> new ResourceNotFoundException("Menu item no encontrado con ID: " + itemDTO.getMenuItemId()));
             
@@ -393,15 +422,29 @@ public class OrdersService {
                 .filter(avail -> avail.getMenuItem().getId().equals(menuItem.getId()) && 
                                isSameDay(avail.getDate(), normalizedDate))
                 .findFirst();
-        
-        // Si no existe disponibilidad para esta fecha, el item no está disponible
+        Availability availability;
+
+        // Si no existe disponibilidad para esta fecha, crearla usando stock de una disponibilidad anterior o fallback
         if (!existingAvailability.isPresent()) {
-            throw new RuntimeException(
-                String.format("El item '%s' no está disponible para esta fecha", menuItem.getItemName())
-            );
+            log.info("No existe availability para menuItemId={} fechaSolicitada={}. Buscando availability previa...", menuItem.getId(), normalizedDate);
+            Optional<Availability> previousAvailability = allAvailabilities.stream()
+                    .filter(avail -> avail.getMenuItem().getId().equals(menuItem.getId()) &&
+                                   avail.getStock() != null && avail.getStock() > 0)
+                    .findFirst();
+
+            Integer stockToUse = previousAvailability.map(Availability::getStock).orElse(10);
+
+            availability = new Availability();
+            availability.setMenuItem(menuItem);
+            availability.setDate(normalizedDate);
+            availability.setStock(stockToUse);
+            availability.setIsAvailable(true);
+            availability = availabilityRepository.save(availability);
+            log.info("Se creó disponibilidad on-demand para menuItemId={} date={} stock={}", menuItem.getId(), normalizedDate, stockToUse);
+        } else {
+            availability = existingAvailability.get();
+            log.info("Se encontró availability existente menuItemId={} date={} stock={}", menuItem.getId(), availability.getDate(), availability.getStock());
         }
-        
-        Availability availability = existingAvailability.get();
         
         // Verificar que el item está disponible
         if (!Boolean.TRUE.equals(availability.getIsAvailable())) {
@@ -505,7 +548,7 @@ public class OrdersService {
         OrderResponseDTO dto = new OrderResponseDTO();
         dto.setId(order.getId());
         dto.setStatus(order.getStatus());
-        dto.setPickup_time(order.getPickup_time());
+        dto.setPickup_time(order.getPickup_time() != null ? order.getPickup_time().getTime() : null);
         dto.setUserId(order.getUser().getId());
         dto.setUserName(order.getUser().getFirstName() + " " + order.getUser().getLastName());
         dto.setVendorId(order.getVendor().getId());

@@ -102,10 +102,14 @@ public class OrdersController {
                 String token = authHeader.substring(7);
                 userId = ordersService.extractUserIdFromToken(token);
             } catch (Exception e) {
-                return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+                return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                        .header("Content-Type", "text/plain")
+                        .body(null);
             }
         } else {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .header("Content-Type", "text/plain")
+                    .body(null);
         }
         return ResponseEntity.ok(ordersService.cancelOrder(orderId, userId));
     }
